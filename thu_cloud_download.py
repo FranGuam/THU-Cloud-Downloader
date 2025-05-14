@@ -30,7 +30,7 @@ def get_share_key(url: str) -> str:
 
 
 def get_root_dir(share_key: str) -> str:
-    # Aquire the root directory name of the share link, 
+    # Aquire the root directory name of the share link,
     # run after verify_password function
     global sess
     pattern = '<meta property="og:title" content="(.*)" />'
@@ -50,7 +50,7 @@ def verify_password(share_key: str) -> None:
     csrfmiddlewaretoken = re.findall(pattern, r.text)
     if csrfmiddlewaretoken:
         pwd = input("Please enter the password: ")
-        
+
         csrfmiddlewaretoken = csrfmiddlewaretoken[0]
         data = {
             "csrfmiddlewaretoken": csrfmiddlewaretoken,
@@ -69,8 +69,8 @@ def is_match(file_path: str, pattern: str) -> bool:
     return pattern is None or fnmatch.fnmatch(file_path, pattern)
 
 
-def dfs_search_files(share_key: str, 
-                     path: str = "/", 
+def dfs_search_files(share_key: str,
+                     path: str = "/",
                      pattern: str = None) -> list:
     global sess
     filelist = []
@@ -79,8 +79,7 @@ def dfs_search_files(share_key: str,
     objects = r.json()['dirent_list']
     for obj in objects:
         if obj["is_dir"]:
-            filelist.extend(
-                dfs_search_files(share_key, obj['folder_path'], pattern))
+            filelist.extend(dfs_search_files(share_key, obj['folder_path'], pattern))
         elif is_match(obj["file_path"], pattern):
             filelist.append(obj)
     return filelist
@@ -105,8 +104,8 @@ def print_filelist(filelist):
             print("... %d more files" % (len(filelist) - 100))
             break
     print("-" * 100)
-    
-    
+
+
 def download(share_key: str, filelist: list, save_dir: str) -> None:
     if os.path.exists(save_dir):
         logging.warning("Save directory already exists. Files will be overwritten.")
@@ -117,11 +116,9 @@ def download(share_key: str, filelist: list, save_dir: str) -> None:
         file_url = 'https://cloud.tsinghua.edu.cn/d/{}/files/?p={}&dl=1'.format(share_key, encoded_path)
         save_path = os.path.join(save_dir, file["file_path"][1:])
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        # logging.info("[{}/{}] Downloading File: {}".format(i + 1, len(filelist), save_path))
         try:
             pbar.set_description("[{}/{}]".format(i + 1, len(filelist)))
             download_single_file(file_url, save_path, pbar)
-            
         except Exception as e:
             logging.error("Error happened when downloading file: {}".format(save_path))
             logging.error(e)
@@ -135,7 +132,7 @@ def main():
     url, pattern, save_dir = args.link, args.file, args.save_dir
     share_key = get_share_key(url)
     verify_password(share_key)
-    
+
     # search files
     logging.info("Searching for files to be downloaded, Wait a moment...")
     filelist = dfs_search_files(share_key, pattern=pattern)
@@ -150,18 +147,17 @@ def main():
     key = input("Start downloading? [y/n]")
     if key != 'y':
         return
-    
+
     # Save to desktop by default.
     if save_dir is None:
         save_dir = os.path.join(os.path.expanduser("~"), 'Desktop')
         assert os.path.exists(save_dir), "Desktop folder not found."
     root_dir = get_root_dir(share_key)
     save_dir = os.path.join(save_dir, root_dir)
-    
+
     download(share_key, filelist, save_dir)
-    
-    
-    
+
+
 if __name__ == '__main__':
     """
     用法:
