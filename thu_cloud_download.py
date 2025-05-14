@@ -87,11 +87,25 @@ def dfs_search_files(share_key: str,
 
 def download_single_file(url: str, fname: str, pbar: tqdm):
     global sess
-    resp = sess.get(url, stream=True)
-    with open(fname, 'wb') as file:
-        for data in resp.iter_content(chunk_size=1024):
-            size = file.write(data)
-            pbar.update(size)
+    resp = sess.head(url)
+    assert resp.status_code == 302, "File not found at {}".format(url)
+    retry = 3
+    while retry > 0:
+        try:
+            resp = sess.get(url, stream=True)
+            with open(fname, 'wb') as file:
+                for data in resp.iter_content(chunk_size=1024):
+                    size = file.write(data)
+                    pbar.update(size)
+            return
+        except Exception as e:
+            logging.error("Error happened when downloading from {}".format(url))
+            logging.error(e)
+            retry -= 1
+            if retry == 0:
+                logging.error("Failed to download from {}".format(url))
+            else:
+                logging.info("Retrying... {} times left.".format(retry))
 
 
 def print_filelist(filelist):
@@ -112,16 +126,12 @@ def download(share_key: str, filelist: list, save_dir: str) -> None:
     total_size = sum([file["size"] for file in filelist])
     pbar = tqdm(total=total_size, ncols=120, unit='iB', unit_scale=True, unit_divisor=1024)
     for i, file in enumerate(filelist):
+        pbar.set_description("[{}/{}]".format(i + 1, len(filelist)))
         encoded_path = urllib.parse.quote(file["file_path"])
         file_url = 'https://cloud.tsinghua.edu.cn/d/{}/files/?p={}&dl=1'.format(share_key, encoded_path)
         save_path = os.path.join(save_dir, file["file_path"][1:])
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        try:
-            pbar.set_description("[{}/{}]".format(i + 1, len(filelist)))
-            download_single_file(file_url, save_path, pbar)
-        except Exception as e:
-            logging.error("Error happened when downloading file: {}".format(save_path))
-            logging.error(e)
+        download_single_file(file_url, save_path, pbar)
     pbar.close()
     logging.info("Download finished.")
 
