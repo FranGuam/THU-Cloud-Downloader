@@ -25,7 +25,6 @@ def get_share_key(url: str) -> str:
     if not url.startswith(prefix):
         raise ValueError('Share link of Tsinghua Cloud should start with {}'.format(prefix))
     share_key = url[len(prefix):].replace('/', '')
-    logging.info('Share key: {}'.format(share_key))
     return share_key
 
 
@@ -37,7 +36,6 @@ def get_root_dir(share_key: str) -> str:
     r = sess.get(f"https://cloud.tsinghua.edu.cn/d/{share_key}/")
     root_dir = re.findall(pattern, r.text)
     assert root_dir is not None, "Couldn't find title of the share link."
-    logging.info("Root directory name: {}".format(root_dir[0]))
     return root_dir[0]
 
 
@@ -154,18 +152,16 @@ def main():
     print_filelist(filelist)
     total_size = sum([file["size"] for file in filelist]) / 1024 / 1024 # MB
     logging.info(f"File count: {len(filelist)}. Total size: {total_size: .1f} MB.")
+    if save_dir is None:
+        logging.info("Save directory not specified. Saving to \"./downloads\" by default.")
+        save_dir = os.path.join(os.getcwd(), "downloads")
+    root_dir = get_root_dir(share_key)
+    save_dir = os.path.join(save_dir, root_dir)
+    logging.info(f"Files will be saved to {save_dir}.")
+
     key = input("Start downloading? [y/n] ")
     if key != 'y':
         return
-
-    # Save to desktop by default.
-    if save_dir is None:
-        logging.info("Save directory not specified. Saving to Desktop by default.")
-        save_dir = os.path.join(os.path.expanduser("~"), 'Desktop')
-        assert os.path.exists(save_dir), "Desktop folder not found."
-    root_dir = get_root_dir(share_key)
-    save_dir = os.path.join(save_dir, root_dir)
-
     download(share_key, filelist, save_dir)
 
 
