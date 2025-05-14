@@ -143,13 +143,14 @@ def main():
 
     print_filelist(filelist)
     total_size = sum([file["size"] for file in filelist]) / 1024 / 1024 # MB
-    logging.info(f"# Files: {len(filelist)}. Total size: {total_size: .1f} MB.")
-    key = input("Start downloading? [y/n]")
+    logging.info(f"File count: {len(filelist)}. Total size: {total_size: .1f} MB.")
+    key = input("Start downloading? [y/n] ")
     if key != 'y':
         return
 
     # Save to desktop by default.
     if save_dir is None:
+        logging.info("Save directory not specified. Saving to Desktop by default.")
         save_dir = os.path.join(os.path.expanduser("~"), 'Desktop')
         assert os.path.exists(save_dir), "Desktop folder not found."
     root_dir = get_root_dir(share_key)
